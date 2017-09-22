@@ -2,105 +2,178 @@ import { Component, OnInit, OnChanges, ViewChild, ElementRef, Input, ViewEncapsu
 import * as d3 from 'd3';
 
 @Component({
-  selector: 'app-barchart',
-  moduleId: module.id,
-  templateUrl: 'barchart.component.html',
-  styleUrls: ['barchart.component.scss'],
-  encapsulation: ViewEncapsulation.None
+	selector: 'app-barchart',
+	moduleId: module.id,
+	templateUrl: 'barchart.component.html',
+	styleUrls: ['barchart.component.scss'],
+	encapsulation: ViewEncapsulation.None
 })
+
 export class BarchartComponent implements OnInit, OnChanges {
-  @ViewChild('chart') private chartContainer: ElementRef;
-  @Input() private data: Array<any>;
-  private margin: any = { top: 20, bottom: 20, left: 40, right: 20};
-  private chart: any;
-  private width: number;
-  private height: number;
-  private xScale: any;
-  private yScale: any;
-  private rightAxis: any;
-  private leftAxis: any;
+	@Input() private data: Array<any>;
+	@ViewChild('chart') private chartContainer: ElementRef;
+	@ViewChild('slider') private sliderContainer: ElementRef;
+	private chartBars: any;
+	private chartLines: any;
+	private chartWidth: number;
+	private chartHeight: number;
+	private barsLenght: number = 20;
+	private currentData: Array<any>;
+	private slider: any;
+	private sliderX: any;
+	private sliderHanlde: any;
+	private slidertWidth: number;
+	private slidertHeight: number;
+	private sliderValue: number = 0;
+	private barScaleX: any;
+	private barScaleY: any;
+	private lineScaleX: any;
+	private lineScaleY: any;
+	
+	ngOnInit() {
+		this.createChart();
+		if (this.data) {
+			if (this.data.length > this.barsLenght) {
+				this.createSlider();
+				this.onSliderChange();
+			} else {
+				this.currentData = this.data;
+			}
+			this.updateChart();
+		}
+	}
 
-  constructor() { }
+	ngOnChanges() {
+		if (this.chartBars) {
+			this.updateChart();
+		}
+	}
 
-  ngOnInit() {
-    this.createChart();
-    if (this.data) {
-      this.updateChart();
-    }
-  }
+	createChart() {
+		let chartElement = this.chartContainer.nativeElement;
+		this.chartWidth = chartElement.offsetWidth;
+		this.chartHeight = chartElement.offsetHeight;
 
-  ngOnChanges() {
-    if (this.chart) {
-      this.updateChart();
-    }
-  }
+		let chartSvg = d3.select(chartElement).append('svg')
+			.attr('width', this.chartWidth)
+			.attr('height', this.chartHeight);
 
-  createChart() {
-    let element = this.chartContainer.nativeElement;
-    this.width = element.offsetWidth - this.margin.left - this.margin.right;
-    this.height = element.offsetHeight - this.margin.top - this.margin.bottom;
-    let svg = d3.select(element).append('svg')
-      .attr('width', element.offsetWidth)
-      .attr('height', element.offsetHeight);
+		// chart plot area
+		this.chartBars = chartSvg.append('g')
+			.attr('class', 'bars');
+		this.chartLines = chartSvg.append('g')
+			.attr('class', 'lines');
 
-    // chart plot area
-    this.chart = svg.append('g')
-      .attr('class', 'bars')
-      .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`);
+		// define X & Y domains
+		let xDomain = this.data.map(d => d.name);
+		let yDomain = [0, d3.max(this.data, d => d.speed)];
+		let lineDomainX = [0, this.data.length];
+		let lineDomainY = [0, d3.max(this.data, d => d.pareto)];
 
-    // define X & Y domains
-    let xDomain = this.data.map(d => d[0]);
-    let yDomain = [0, d3.max(this.data, d => d[1])];
+		// create scales
+		this.barScaleX = d3.scaleBand()
+			.padding(0.1)
+			.domain(xDomain)
+			.rangeRound([0, this.chartWidth]);
+		this.barScaleY = d3.scaleLinear()
+			.domain(yDomain)
+			.range([this.chartHeight, 0]);
+		this.lineScaleX = d3.scaleLinear()
+			.domain(lineDomainX)
+			.range([0, this.chartWidth]);
+		this.lineScaleY = d3.scaleLinear()
+			.domain(lineDomainY)
+			.range([this.chartHeight, 0]);
+	}
 
-    // create scales
-    this.xScale = d3.scaleBand().padding(0.3).domain(xDomain).rangeRound([0, this.width]);
-    this.yScale = d3.scaleLinear().domain(yDomain).range([this.height, 0]);
-    console.log(yDomain)
+	createSlider() {
+		let sliderElement = this.sliderContainer.nativeElement;
+		this.slidertWidth = sliderElement.offsetWidth;
+		this.slidertHeight = sliderElement.offsetHeight;
 
-    // left & left axis
-    this.rightAxis = svg.append('g')
-      .attr('class', 'axis axis-x')
-      .attr('transform', `translate(${this.margin.left}, ${this.margin.top + this.height})`)
-      .call(d3.axisBottom(this.xScale));
-    this.leftAxis = svg.append('g')
-      .attr('class', 'axis axis-y')
-      .attr('transform', `translate(${this.margin.left}, ${this.margin.top})`)
-      .call(d3.axisLeft(this.yScale).tickSize(-this.width));
-  }
+		let sliderSvg = d3.select(sliderElement).append('svg')
+			.attr('width', this.slidertWidth)
+			.attr('height', this.slidertHeight)
+			.attr("transform", "translate(0,-" + this.slidertHeight / 2 + ")");
 
-  updateChart() {
-    // update scales & axis
-    this.xScale.domain(this.data.map(d => d[0]));
-    this.yScale.domain([0, d3.max(this.data, d => d[1])]);
-    this.rightAxis.transition().call(d3.axisBottom(this.xScale).tickSize(0));
-    this.leftAxis.transition().call(d3.axisLeft(this.yScale).tickSize(-this.width));
+		// slider plot area
+		this.slider = sliderSvg.append("g");
+	
+		// define x domain
+		this.sliderX = d3.scaleLinear()
+			.domain([0, this.data.length - this.barsLenght])
+			.range([0, this.slidertWidth - this.slidertHeight])
+			.clamp(true);
 
-    let update = this.chart.selectAll('.bar')
-      .data(this.data);
+		// create track
+		this.slider.append("rect")
+			.attr("class", "track")
+			.attr("x", 0)
+			.attr("width", this.slidertWidth)
+			.attr("height", this.slidertHeight)
+			.call(d3.drag()
+				.on("start.interrupt", () => this.slider.interrupt())
+				.on("start drag", () => {
+					this.sliderValue = Math.round(this.sliderX.invert(d3.event.x));
+					this.onSliderChange();
+			}));
 
-    // remove exiting bars
-    update.exit().remove();
+		// create handle
+		this.sliderHanlde = this.slider.insert("rect", ".track")
+			.attr("class", "handle")
+			.attr("x", 0)
+			.attr("width", this.slidertHeight)
+			.attr("height", this.slidertHeight);
+	}
 
-    // update existing bars
-    this.chart.selectAll('.bar').transition()
-      .attr('x', d => this.xScale(d[0]))
-      .attr('y', d => this.yScale(d[1]))
-      .attr('width', d => this.xScale.bandwidth())
-      .attr('height', d => this.height - this.yScale(d[1]));
+	onSliderChange() {
+		let start = this.sliderValue;
+		let end = start + this.barsLenght;
+		this.currentData = this.data.slice(start, end);
+		this.updateChart();
+		this.sliderHanlde.attr("x", this.sliderX(this.sliderValue));
+	}
 
-    // add new bars
-    update
-      .enter()
-      .append('rect')
-      .attr('class', 'bar')
-      .attr('x', d => this.xScale(d[0]))
-      .attr('y', d => this.yScale(0))
-      .attr('width', 16)
-      .attr('height', 0)
-      .style('fill', 'rgb(244, 178, 122)')
-      .transition()
-      .delay((d, i) => i * 10)
-      .attr('y', d => this.yScale(d[1]))
-      .attr('height', d => this.height - this.yScale(d[1]));
-  }
+	updateChart() {
+		// update scales & axis
+		this.barScaleX.domain(this.currentData.map(d => d.name));
+		this.barScaleY.domain([0, d3.max(this.currentData, d => d.speed)]);
+
+		let update = this.chartBars.selectAll('.bar')
+			.data(this.currentData);
+
+		// remove exiting bars
+		update.exit().remove();
+
+		// update existing bars
+		this.chartBars.selectAll('.bar')
+			.attr('x', d => this.barScaleX(d.name))
+			.attr('y', d => this.barScaleY(d.speed))
+			.attr('width', d => this.barScaleX.bandwidth())
+			.attr('height', d => this.chartHeight - this.barScaleY(d.speed));
+
+		// add new bars
+		update
+			.enter()
+			.append('rect')
+			.attr('class', 'bar')
+			.attr('x', d => this.barScaleX(d.name))
+			.attr('y', d => this.barScaleY(d.speed))
+			.style('fill', 'rgb(244, 178, 122)')
+			.attr('width', d => this.barScaleX.bandwidth())
+			.attr('height', d => this.chartHeight - this.barScaleY(d.speed));
+
+		var line = d3.line()
+			.x((d, i) => this.lineScaleX(i))
+			.y((d, i) => this.lineScaleY(i))
+			.curve(d3.curveMonotoneX);
+		
+		this.chartLines.append("path")
+			.datum(this.currentData)
+			.attr("class", "line")
+			.attr("d", line);
+
+	}
+
+	constructor() { }
 }

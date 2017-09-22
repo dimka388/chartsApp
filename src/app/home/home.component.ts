@@ -1,36 +1,25 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
+import { Http } from '@angular/http';
+import { Observable } from 'rxjs/Rx';
+import 'rxjs/add/operator/map';
 
 @Component({
-  selector: 'app-home',
+	selector: 'app-home',
 	moduleId: module.id,
-  templateUrl: 'home.component.html',
-  styleUrls: ['home.component.scss']
+	templateUrl: 'home.component.html',
+	styleUrls: ['home.component.scss']
 })
-export class HomeComponent implements OnInit {
-  private barChartData: Array<any>;
 
-  constructor() {}
+export class HomeComponent {
+	private src: string = 'https://59c4b5fed201270011552fec.mockapi.io/items';
+	private barChartData: Array<any>;
+	
+	getItems(): Observable <any> {
+		return this.http.get(this.src)
+			.map((res:any) => res.json());
+	}
 
-  ngOnInit() {
-    // give everything a chance to get loaded before starting the animation to reduce choppiness
-    this.generateData();
-    setTimeout(() => {
-      this.generateData();
-
-      // change the data periodically
-      setInterval(() => this.generateData(), 3000);
-    }, 1000);
-  }
-
-  generateData() {
-    this.barChartData = [];
-    for (let i = 0; i < 20; i++) {
-      this.barChartData.push([
-        `${i+1}`,
-        Math.floor(Math.random() * 100),
-        2000 - 100 * i
-      ]);
-    }
-    // this.barChartData.sort((a, b) => b[1] - a[1]);
-  }
+	constructor(private http:Http) {
+		this.getItems().subscribe(data => this.barChartData = data);
+	}
 }
