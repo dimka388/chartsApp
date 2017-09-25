@@ -10,14 +10,16 @@ import * as d3 from 'd3';
 })
 
 export class BarchartComponent implements OnInit, OnChanges {
-	@Input() private data: Array<any>;
+	@Input() private data: Array<any> = [];
 	@ViewChild('chart') private chartContainer: ElementRef;
 	@ViewChild('slider') private sliderContainer: ElementRef;
+
 	private chartBars: any;
 	private chartLines: any;
 	private chartWidth: number;
 	private chartHeight: number;
-	private barsLenght: number = 20;
+	private barsLenght: number = 55;
+	private barWidth: number = 20;
 	private currentData: Array<any>;
 	private slider: any;
 	private sliderX: any;
@@ -27,24 +29,26 @@ export class BarchartComponent implements OnInit, OnChanges {
 	private sliderValue: number = 0;
 	private barScaleX: any;
 	private barScaleY: any;
+	private line: any;
 	private lineScaleX: any;
 	private lineScaleY: any;
+	private xAxis: any;
+	private yAxis: any;
+	private rightAxis: any;
+	
 	
 	ngOnInit() {
 		this.createChart();
-		if (this.data) {
+	}
+
+	ngOnChanges() {
+		if (this.data.length) {
 			if (this.data.length > this.barsLenght) {
 				this.createSlider();
 				this.onSliderChange();
 			} else {
 				this.currentData = this.data;
 			}
-			this.updateChart();
-		}
-	}
-
-	ngOnChanges() {
-		if (this.chartBars) {
 			this.updateChart();
 		}
 	}
@@ -62,28 +66,34 @@ export class BarchartComponent implements OnInit, OnChanges {
 		this.chartBars = chartSvg.append('g')
 			.attr('class', 'bars');
 		this.chartLines = chartSvg.append('g')
+			.attr('transform', `translate(10, 0)`)
 			.attr('class', 'lines');
 
-		// define X & Y domains
-		let xDomain = this.data.map(d => d.name);
-		let yDomain = [0, d3.max(this.data, d => d.speed)];
-		let lineDomainX = [0, this.data.length];
-		let lineDomainY = [0, d3.max(this.data, d => d.pareto)];
-
 		// create scales
-		this.barScaleX = d3.scaleBand()
-			.padding(0.1)
-			.domain(xDomain)
-			.rangeRound([0, this.chartWidth]);
+		this.barScaleX = d3.scaleLinear()
+			.range([0, this.chartWidth]);
 		this.barScaleY = d3.scaleLinear()
-			.domain(yDomain)
 			.range([this.chartHeight, 0]);
+
 		this.lineScaleX = d3.scaleLinear()
-			.domain(lineDomainX)
 			.range([0, this.chartWidth]);
 		this.lineScaleY = d3.scaleLinear()
-			.domain(lineDomainY)
 			.range([this.chartHeight, 0]);
+		
+		this.chartLines.append("path")
+			.attr("class", "line");
+		this.line = d3.line()
+			.x((d, i) => this.lineScaleX(i))
+			.y((d, i) => this.lineScaleY(Math.max(1, d['Apax Currency Spend'])))
+			.curve(d3.curveCatmullRom);
+
+		// axis
+		this.yAxis = chartSvg.append('g')
+			// .attr('transform', `translate(0, 0)`)
+			.call(d3.axisRight(this.barScaleY));
+		this.rightAxis = chartSvg.append('g')
+			.attr('transform', `translate(${this.chartWidth - 1}, 0)`)
+			.call(d3.axisLeft(this.lineScaleY));
 	}
 
 	createSlider() {
@@ -98,8 +108,7 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 		// slider plot area
 		this.slider = sliderSvg.append("g");
-	
-		// define x domain
+
 		this.sliderX = d3.scaleLinear()
 			.domain([0, this.data.length - this.barsLenght])
 			.range([0, this.slidertWidth - this.slidertHeight])
@@ -136,8 +145,17 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 	updateChart() {
 		// update scales & axis
-		this.barScaleX.domain(this.currentData.map(d => d.name));
-		this.barScaleY.domain([0, d3.max(this.currentData, d => d.speed)]);
+		this.barScaleX.domain([0, this.currentData.length]);
+		this.barScaleY.domain([0, d3.max(this.currentData, d => Math.max(1, d['Apax Currency Spend']))]);
+		this.lineScaleX.domain([0, this.currentData.length]);
+		this.lineScaleY.domain([0, d3.max(this.currentData, d => Math.max(1, d['Apax Currency Spend']))]);
+
+		this.chartLines.selectAll('.line')
+			.datum(this.currentData)
+			.attr("d", this.line);
+
+		this.yAxis.call(d3.axisRight(this.barScaleY));
+		this.rightAxis.call(d3.axisRight(this.lineScaleY));
 
 		let update = this.chartBars.selectAll('.bar')
 			.data(this.currentData);
@@ -147,32 +165,23 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 		// update existing bars
 		this.chartBars.selectAll('.bar')
-			.attr('x', d => this.barScaleX(d.name))
-			.attr('y', d => this.barScaleY(d.speed))
-			.attr('width', d => this.barScaleX.bandwidth())
-			.attr('height', d => this.chartHeight - this.barScaleY(d.speed));
+			// .attr('x', d => this.barScaleX(d['Vendor Name']))
+			.attr('x', (d, i) => this.barScaleX(i))
+			.attr('y', d => this.barScaleY(Math.max(1, d['Apax Currency Spend'])))
+			.attr('width', this.barWidth)
+			.attr('height', d => this.chartHeight - this.barScaleY(Math.max(1, d['Apax Currency Spend'])));
 
 		// add new bars
 		update
 			.enter()
 			.append('rect')
 			.attr('class', 'bar')
-			.attr('x', d => this.barScaleX(d.name))
-			.attr('y', d => this.barScaleY(d.speed))
+			// .attr('x', d => this.barScaleX(d['Vendor Name']))
+			.attr('x', (d, i) => this.barScaleX(i))
+			.attr('y', d => this.barScaleY(Math.max(1, d['Apax Currency Spend'])))
 			.style('fill', 'rgb(244, 178, 122)')
-			.attr('width', d => this.barScaleX.bandwidth())
-			.attr('height', d => this.chartHeight - this.barScaleY(d.speed));
-
-		var line = d3.line()
-			.x((d, i) => this.lineScaleX(i))
-			.y((d, i) => this.lineScaleY(i))
-			.curve(d3.curveMonotoneX);
-		
-		this.chartLines.append("path")
-			.datum(this.currentData)
-			.attr("class", "line")
-			.attr("d", line);
-
+			.attr('width', this.barWidth)
+			.attr('height', d => this.chartHeight - this.barScaleY(Math.max(1, d['Apax Currency Spend'])));
 	}
 
 	constructor() { }
