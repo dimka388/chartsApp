@@ -1,26 +1,33 @@
 .d3-chart {
 	padding: 7px;
+
 	.chart{
 		margin: 0 0 10px;
 		width: 100%;
 		height: 400px;
 	}
+
 	.bar{
-		fill: rgb(244, 178, 122);
+		width: 20px;
+		fill: #f4b27a;
 	}
+
 	.line{
 		fill: none;
 		stroke: #000;
 		stroke-width: 1px;
 	}
+
 	.slider{
 		width: 100%;
 		height: 10px;
+
 		.track {
 			fill-opacity: .5;
 			fill: #eaeaea;
 			stroke-width: 12px;
 		}
+
 		.handle {
 			fill-opacity: .2;
 			fill: #000;

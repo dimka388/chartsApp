@@ -19,23 +19,20 @@ export class BarchartComponent implements OnInit, OnChanges {
 	private chartWidth: number;
 	private chartHeight: number;
 	private barsLenght: number = 55;
-	private barWidth: number = 20;
+	private barsValues: string = 'Apax Currency Spend';
+	private linesValues: string = 'Actual Currency Spend';
 	private currentData: Array<any>;
-	private slider: any;
-	private sliderX: any;
+	private line: any;
+	private sliderBar: any;
 	private sliderHanlde: any;
 	private slidertWidth: number;
 	private slidertHeight: number;
 	private sliderValue: number = 0;
-	private barScaleX: any;
-	private barScaleY: any;
-	private line: any;
-	private lineScaleX: any;
-	private lineScaleY: any;
-	private xAxis: any;
-	private yAxis: any;
+	private xScale: any;
+	private leftScale: any;
+	private rightScale: any;
+	private leftAxis: any;
 	private rightAxis: any;
-	
 	
 	ngOnInit() {
 		this.createChart();
@@ -43,12 +40,8 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 	ngOnChanges() {
 		if (this.data.length) {
-			if (this.data.length > this.barsLenght) {
-				this.createSlider();
-				this.onSliderChange();
-			} else {
-				this.currentData = this.data;
-			}
+			this.createSlider();
+			this.onSliderChange();
 			this.updateChart();
 		}
 	}
@@ -66,34 +59,30 @@ export class BarchartComponent implements OnInit, OnChanges {
 		this.chartBars = chartSvg.append('g')
 			.attr('class', 'bars');
 		this.chartLines = chartSvg.append('g')
-			.attr('transform', `translate(10, 0)`)
+			.attr('transform', 'translate(10, 0)')
 			.attr('class', 'lines');
 
 		// create scales
-		this.barScaleX = d3.scaleLinear()
+		this.xScale = d3.scaleLinear()
 			.range([0, this.chartWidth]);
-		this.barScaleY = d3.scaleLinear()
+		this.leftScale = d3.scaleLinear()
+			.range([this.chartHeight, 0]);
+		this.rightScale = d3.scaleLinear()
 			.range([this.chartHeight, 0]);
 
-		this.lineScaleX = d3.scaleLinear()
-			.range([0, this.chartWidth]);
-		this.lineScaleY = d3.scaleLinear()
-			.range([this.chartHeight, 0]);
-		
+		// add lines
 		this.chartLines.append("path")
 			.attr("class", "line");
+
 		this.line = d3.line()
-			.x((d, i) => this.lineScaleX(i))
-			.y((d, i) => this.lineScaleY(Math.max(1, d['Apax Currency Spend'])))
+			.x((d, i) => this.xScale(i))
+			.y((d, i) => this.rightScale(Math.max(1, d[this.linesValues])))
 			.curve(d3.curveCatmullRom);
 
 		// axis
-		this.yAxis = chartSvg.append('g')
-			// .attr('transform', `translate(0, 0)`)
-			.call(d3.axisRight(this.barScaleY));
+		this.leftAxis = chartSvg.append('g');
 		this.rightAxis = chartSvg.append('g')
-			.attr('transform', `translate(${this.chartWidth - 1}, 0)`)
-			.call(d3.axisLeft(this.lineScaleY));
+			.attr('transform', `translate(${this.chartWidth - 1}, 0)`);
 	}
 
 	createSlider() {
@@ -104,31 +93,31 @@ export class BarchartComponent implements OnInit, OnChanges {
 		let sliderSvg = d3.select(sliderElement).append('svg')
 			.attr('width', this.slidertWidth)
 			.attr('height', this.slidertHeight)
-			.attr("transform", "translate(0,-" + this.slidertHeight / 2 + ")");
+			.attr('transform', 'translate(0,-' + this.slidertHeight / 2 + ')');
 
 		// slider plot area
-		this.slider = sliderSvg.append("g");
+		let slider = sliderSvg.append("g");
 
-		this.sliderX = d3.scaleLinear()
+		this.sliderBar = d3.scaleLinear()
 			.domain([0, this.data.length - this.barsLenght])
 			.range([0, this.slidertWidth - this.slidertHeight])
 			.clamp(true);
 
 		// create track
-		this.slider.append("rect")
+		slider.append("rect")
 			.attr("class", "track")
 			.attr("x", 0)
 			.attr("width", this.slidertWidth)
 			.attr("height", this.slidertHeight)
 			.call(d3.drag()
-				.on("start.interrupt", () => this.slider.interrupt())
+				.on("start.interrupt", () => slider.interrupt())
 				.on("start drag", () => {
-					this.sliderValue = Math.round(this.sliderX.invert(d3.event.x));
+					this.sliderValue = Math.round(this.sliderBar.invert(d3.event.x));
 					this.onSliderChange();
 			}));
 
 		// create handle
-		this.sliderHanlde = this.slider.insert("rect", ".track")
+		this.sliderHanlde = slider.insert("rect", ".track")
 			.attr("class", "handle")
 			.attr("x", 0)
 			.attr("width", this.slidertHeight)
@@ -139,23 +128,22 @@ export class BarchartComponent implements OnInit, OnChanges {
 		let start = this.sliderValue;
 		let end = start + this.barsLenght;
 		this.currentData = this.data.slice(start, end);
+		this.sliderHanlde.attr("x", this.sliderBar(this.sliderValue));
 		this.updateChart();
-		this.sliderHanlde.attr("x", this.sliderX(this.sliderValue));
 	}
 
 	updateChart() {
 		// update scales & axis
-		this.barScaleX.domain([0, this.currentData.length]);
-		this.barScaleY.domain([0, d3.max(this.currentData, d => Math.max(1, d['Apax Currency Spend']))]);
-		this.lineScaleX.domain([0, this.currentData.length]);
-		this.lineScaleY.domain([0, d3.max(this.currentData, d => Math.max(1, d['Apax Currency Spend']))]);
+		this.xScale.domain([0, this.currentData.length]);
+		this.leftScale.domain([0, d3.max(this.currentData, d => Math.max(1, d[this.barsValues]))]);
+		this.rightScale.domain([0, d3.max(this.currentData, d => Math.max(1, d[this.linesValues]))]);
 
 		this.chartLines.selectAll('.line')
 			.datum(this.currentData)
 			.attr("d", this.line);
 
-		this.yAxis.call(d3.axisRight(this.barScaleY));
-		this.rightAxis.call(d3.axisRight(this.lineScaleY));
+		this.leftAxis.call(d3.axisRight(this.leftScale));
+		this.rightAxis.call(d3.axisLeft(this.rightScale));
 
 		let update = this.chartBars.selectAll('.bar')
 			.data(this.currentData);
@@ -165,23 +153,18 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 		// update existing bars
 		this.chartBars.selectAll('.bar')
-			// .attr('x', d => this.barScaleX(d['Vendor Name']))
-			.attr('x', (d, i) => this.barScaleX(i))
-			.attr('y', d => this.barScaleY(Math.max(1, d['Apax Currency Spend'])))
-			.attr('width', this.barWidth)
-			.attr('height', d => this.chartHeight - this.barScaleY(Math.max(1, d['Apax Currency Spend'])));
+			.attr('x', (d, i) => this.xScale(i))
+			.attr('y', d => this.leftScale(Math.max(1, d[this.barsValues])))
+			.attr('height', d => this.chartHeight - this.leftScale(Math.max(1, d[this.barsValues])));
 
 		// add new bars
 		update
 			.enter()
 			.append('rect')
 			.attr('class', 'bar')
-			// .attr('x', d => this.barScaleX(d['Vendor Name']))
-			.attr('x', (d, i) => this.barScaleX(i))
-			.attr('y', d => this.barScaleY(Math.max(1, d['Apax Currency Spend'])))
-			.style('fill', 'rgb(244, 178, 122)')
-			.attr('width', this.barWidth)
-			.attr('height', d => this.chartHeight - this.barScaleY(Math.max(1, d['Apax Currency Spend'])));
+			.attr('x', (d, i) => this.xScale(i))
+			.attr('y', d => this.leftScale(Math.max(1, d[this.barsValues])))
+			.attr('height', d => this.chartHeight - this.leftScale(Math.max(1, d[this.barsValues])));
 	}
 
 	constructor() { }
