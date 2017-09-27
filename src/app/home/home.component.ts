@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { Http } from '@angular/http';
 import { Observable } from 'rxjs/Rx';
 import 'rxjs/add/operator/map';
-import * as d3 from 'd3';
 
 @Component({
 	selector: 'app-home',
@@ -12,16 +11,13 @@ import * as d3 from 'd3';
 })
 
 export class HomeComponent {
-	private src: string = 'https://59c4b5fed201270011552fec.mockapi.io/items';
-	private barChartData: Array<any> = [];
-	
-	getItems(): Observable <any> {
-		return this.http.get(this.src)
+    private barChartData: Array<any> = [];
+    getItems(): Observable <any> {
+		return this.http.get('https://59cb9ad4a4bf0b0011118636.mockapi.io/rowData')
 			.map((res:any) => res.json());
-	}
+    }
 
 	constructor(private http:Http) {
-		// this.getItems().subscribe(data => this.barChartData = data);
-		d3.csv("assets/data.csv", (data) => this.barChartData = data);
+		this.getItems().subscribe(data => this.barChartData = data);
 	}
 }

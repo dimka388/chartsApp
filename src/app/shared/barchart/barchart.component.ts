@@ -14,13 +14,15 @@ export class BarchartComponent implements OnInit, OnChanges {
 	@ViewChild('chart') private chartContainer: ElementRef;
 	@ViewChild('slider') private sliderContainer: ElementRef;
 
+	dataLoaded: boolean = false;
+
 	private chartBars: any;
 	private chartLines: any;
 	private chartWidth: number;
 	private chartHeight: number;
-	private barsLenght: number = 55;
-	private barsValues: string = 'Apax Currency Spend';
-	private linesValues: string = 'Actual Currency Spend';
+	private barsLenght: number = 20;
+	private barsValues: string = 'spend';
+	private linesValues: string = 'pareto';
 	private currentData: Array<any>;
 	private line: any;
 	private sliderBar: any;
@@ -40,9 +42,10 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 	ngOnChanges() {
 		if (this.data.length) {
+			this.dataLoaded = true;
 			this.createSlider();
 			this.onSliderChange();
-			this.updateChart();
+			this.updateChart(true);
 		}
 	}
 
@@ -53,7 +56,18 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 		let chartSvg = d3.select(chartElement).append('svg')
 			.attr('width', this.chartWidth)
-			.attr('height', this.chartHeight);
+			.attr('height', this.chartHeight)
+			.on("wheel", () => {
+				d3.event.preventDefault();
+				this.sliderValue += d3.event.deltaY / 100;
+				if (this.sliderValue < 0) {
+					this.sliderValue = 0
+				}
+				if (this.sliderValue > this.data.length - this.barsLenght) {
+					this.sliderValue = this.data.length - this.barsLenght;
+				}
+				this.onSliderChange();
+			});
 
 		// chart plot area
 		this.chartBars = chartSvg.append('g')
@@ -64,6 +78,7 @@ export class BarchartComponent implements OnInit, OnChanges {
 
 		// create scales
 		this.xScale = d3.scaleLinear()
+			// .padding(0.1)
 			.range([0, this.chartWidth]);
 		this.leftScale = d3.scaleLinear()
 			.range([this.chartHeight, 0]);
@@ -77,7 +92,7 @@ export class BarchartComponent implements OnInit, OnChanges {
 		this.line = d3.line()
 			.x((d, i) => this.xScale(i))
 			.y((d, i) => this.rightScale(Math.max(1, d[this.linesValues])))
-			.curve(d3.curveCatmullRom);
+			.curve(d3.curveMonotoneX);
 
 		// axis
 		this.leftAxis = chartSvg.append('g');
@@ -129,21 +144,23 @@ export class BarchartComponent implements OnInit, OnChanges {
 		let end = start + this.barsLenght;
 		this.currentData = this.data.slice(start, end);
 		this.sliderHanlde.attr("x", this.sliderBar(this.sliderValue));
-		this.updateChart();
+		this.updateChart(false);
 	}
 
-	updateChart() {
+	updateChart(state: boolean) {
 		// update scales & axis
 		this.xScale.domain([0, this.currentData.length]);
-		this.leftScale.domain([0, d3.max(this.currentData, d => Math.max(1, d[this.barsValues]))]);
-		this.rightScale.domain([0, d3.max(this.currentData, d => Math.max(1, d[this.linesValues]))]);
+		if (state) {
+			this.leftScale.domain([0, d3.max(this.data, d => Math.max(1, d[this.barsValues]))]);
+			this.rightScale.domain([0, d3.max(this.data, d => Math.max(1, d[this.linesValues]))]);
+			this.leftAxis.call(d3.axisRight(this.leftScale));
+			this.rightAxis.call(d3.axisLeft(this.rightScale));
+		}
 
 		this.chartLines.selectAll('.line')
 			.datum(this.currentData)
 			.attr("d", this.line);
 
-		this.leftAxis.call(d3.axisRight(this.leftScale));
-		this.rightAxis.call(d3.axisLeft(this.rightScale));
 
 		let update = this.chartBars.selectAll('.bar')
 			.data(this.currentData);

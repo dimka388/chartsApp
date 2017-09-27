@@ -1,36 +1,79 @@
-.d3-chart {
-	padding: 7px;
+.chart-holder{
+    border: 1px solid rgb(215, 221, 229);
+    border-radius: 5px;
+	max-width: 514px;
+	background-color: #fff;
 
-	.chart{
-		margin: 0 0 10px;
-		width: 100%;
-		height: 400px;
+	h3{
+        margin: 0;
+        padding: 5px;
+        background-color: rgba(215, 221, 229, 0.5);
+        font-size: 12px; 
 	}
 
-	.bar{
-		width: 20px;
-		fill: #f4b27a;
-	}
-
-	.line{
-		fill: none;
-		stroke: #000;
-		stroke-width: 1px;
-	}
-
-	.slider{
-		width: 100%;
-		height: 10px;
-
-		.track {
-			fill-opacity: .5;
-			fill: #eaeaea;
-			stroke-width: 12px;
+	.d3-chart {
+		padding: 7px;
+		position: relative;
+		
+		.loader{
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			z-index: 1;
+			background: #fff;
+			display: flex;
+			align-items: center;
+			opacity: 1;
+			visibility: visible;
+			transition: opacity .5s ease, visibility .5s ease;
+			
+			span{
+				text-align: center;
+				display: block;
+				width: 100%;
+			}
 		}
 
-		.handle {
-			fill-opacity: .2;
-			fill: #000;
+		&.loaded {
+			.loader{
+				opacity: 0;
+				visibility: hidden;
+			}
+		}
+	
+		.chart{
+			margin: 0 0 10px;
+			width: 100%;
+			height: 250px;
+		}
+	
+		.bar{
+			width: 20px;
+			fill: #f4b27a;
+		}
+	
+		.line{
+			fill: none;
+			stroke: #000;
+			stroke-width: 1.5px;
+		}
+	
+		.slider{
+			width: 100%;
+			height: 10px;
+	
+			.track {
+				fill-opacity: .5;
+				fill: #eaeaea;
+				stroke-width: 12px;
+			}
+	
+			.handle {
+				fill-opacity: .2;
+				fill: #000;
+			}
 		}
 	}
 }

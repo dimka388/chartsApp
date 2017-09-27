@@ -1,4 +1,10 @@
-<div class="d3-chart">
-	<div class="chart" #chart></div>
-	<div class="slider" #slider></div>
+<div class="chart-holder">
+	<h3>Supplier List by Cumulative Spend</h3>
+	<div class="d3-chart" [ngClass]="{'loaded' : dataLoaded}">
+		<div class="loader">
+			<span>Loading...</span>
+		</div>
+		<div class="chart" #chart></div>
+		<div class="slider" #slider></div>
+	</div>
 </div>
